@@ -1,6 +1,6 @@
 import sqlite3 as lite
 import pandas as pd
-
+con = lite.connect('test.db')
 
 def change_df_cols(df, col_names):
     df_col_names = list(df.columns)
@@ -8,6 +8,10 @@ def change_df_cols(df, col_names):
     dict_cols = dict(zip_iterator)
     return df.rename(columns=dict_cols)
 
+def check_db_table_exists(cur, table_name):
+    cur.execute('SELECT * FROM ' + table_name)
+    table = cur.fetchall()
+    return len(table) == 0
 
 if __name__ == '__main__':
     # first step is to separate the data to specific tables
@@ -34,7 +38,7 @@ if __name__ == '__main__':
 
     # the second step is to create the db and the db tables
 
-    con = lite.connect('test.db')
+
     with con:
         cur = con.cursor()
         ###################################################################################################################################################
@@ -71,26 +75,31 @@ if __name__ == '__main__':
         # insert to the trip details table
         # self.cursor.execute("SELECT weight FROM Equipment WHERE name = ?", [item]) example
 
-        for row in trip_table.iterrows():
-            cur.execute('''
-                            INSERT INTO TRIP_DETAILS (TRIP_DURRATION, START_TIME, STOP_TIME, START_STATION_ID, STOP_STATION_ID)
-                            VALUES( ?,	? , ? , ?, ?);
-                            ''', [row[1]["TripDuration"], row[1]["StartTime"], row[1]["StopTime"],
-                                  row[1]["StartStationID"], row[1]["EndStationID"]])
+        is_trip_details_exists = check_db_table_exists(cur, 'TRIP_DETAILS')
+        is_station_details_exists = check_db_table_exists(cur, 'TRIP_DETAILS')
+        is_bike_details_exists = check_db_table_exists(cur, 'BIKE_DETAILS')
 
-        for row in station_merged_table.iterrows():
-            cur.execute('''
-                            INSERT INTO STATION_DETAILS (STATION_ID, STATION_NAME, STATION_LATITUDE, STATION_LONGITUDE)
-                            VALUES( ?,	? , ? , ?);
-                            ''', [row[1]["StationID"], row[1]["StationName"], row[1]["StationLatitude"],
-                                  row[1]["StationLongitude"]])
+        if is_trip_details_exists:
+            for row in trip_table.iterrows():
+                cur.execute('''
+                                INSERT INTO TRIP_DETAILS (TRIP_DURRATION, START_TIME, STOP_TIME, START_STATION_ID, STOP_STATION_ID)
+                                VALUES( ?,	? , ? , ?, ?);
+                                ''', [row[1]["TripDuration"], row[1]["StartTime"], row[1]["StopTime"],
+                                      row[1]["StartStationID"], row[1]["EndStationID"]])
+        if is_station_details_exists:
+            for row in station_merged_table.iterrows():
+                cur.execute('''
+                                INSERT INTO STATION_DETAILS (STATION_ID, STATION_NAME, STATION_LATITUDE, STATION_LONGITUDE)
+                                VALUES( ?,	? , ? , ?);
+                                ''', [row[1]["StationID"], row[1]["StationName"], row[1]["StationLatitude"],
+                                      row[1]["StationLongitude"]])
 
-
-        trip_id = 1
-        for row in bike_table.iterrows():
-            cur.execute('''
-                            INSERT INTO BIKE_DETAILS (BIKE_ID, USER_TYPE, BIRTH_YEAR, GENDER, TRIP_DURATION_IN_MIN, TRIP_ID)
-                            VALUES( ?,	? , ? , ?, ?, ?);
-                            ''', [row[1]["BikeID"], row[1]["UserType"], row[1]["BirthYear"],
-                                  row[1]["Gender"], row[1]["TripDurationinmin"], trip_id])
-            trip_id += 1
+        if is_bike_details_exists:
+            trip_id = 1
+            for row in bike_table.iterrows():
+                cur.execute('''
+                                INSERT INTO BIKE_DETAILS (BIKE_ID, USER_TYPE, BIRTH_YEAR, GENDER, TRIP_DURATION_IN_MIN, TRIP_ID)
+                                VALUES( ?,	? , ? , ?, ?, ?);
+                                ''', [row[1]["BikeID"], row[1]["UserType"], row[1]["BirthYear"],
+                                      row[1]["Gender"], row[1]["TripDurationinmin"], trip_id])
+                trip_id += 1

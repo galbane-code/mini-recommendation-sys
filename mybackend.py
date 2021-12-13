@@ -1,8 +1,6 @@
-import numpy
 import sqlite3 as lite
 import pandas as pd
 from math import radians, cos, sin, asin, sqrt
-import json
 con = lite.connect('test.db')
 
 
@@ -29,6 +27,7 @@ def check_loaction_in_db(location_name):
         return len(ret_val) > 0
 
 def get_location_for_recommendation(start_location, time_of_trip, num_of_recommendation):
+    con = lite.connect('test.db')
     with con:
         cur = con.cursor()
         cur.execute('''
@@ -42,7 +41,7 @@ def get_location_for_recommendation(start_location, time_of_trip, num_of_recomme
                                                  HAVING TRIP_DURRATION_IN_MIN <= ?
                                                  ORDER BY TRIP_DURRATION_IN_MIN ASC, TP.TRIP_DISTANCE ASC
                                                 ) AS TP ON SD1.STATION_ID = TP.STOP_STATION_ID
-                        ''', [start_location, time_of_trip])
+                        ''', [start_location.lower(), time_of_trip])
 
         locations_table = cur.fetchall()
         return locations_table
@@ -74,13 +73,11 @@ if __name__ == '__main__':
     dist_df = df[['StartStationLatitude', 'StartStationLongitude', 'EndStationLatitude', 'EndStationLongitude']]
     station_start_table = df[['StartStationID', 'StartStationName']]
     station_end_table = df[['EndStationID', 'EndStationName']]
-    # bike_table = df[['BikeID', 'UserType', 'BirthYear', 'Gender', 'TripDurationinmin']]
-    col = dist_df.apply(lambda row: haversine(row['StartStationLatitude'], row['StartStationLongitude'],
+    trip_dist_col = dist_df.apply(lambda row: haversine(row['StartStationLatitude'],
+                                                        row['StartStationLongitude'],
                                                         row['EndStationLatitude'],
                                                         row['EndStationLongitude']), axis=1).tolist()
-    trip_table.insert(3,"trip_dist",col)
-    # trip_distance.name = "trip_dist"
-    # trip_table.join(trip_distance)
+    trip_table.insert(3, "trip_dist", trip_dist_col)
     station_merged_col_names = ['StationID', 'StationName']
 
     station_start_table = change_df_cols(station_start_table, station_merged_col_names)
@@ -88,7 +85,7 @@ if __name__ == '__main__':
 
     frames = [station_start_table, station_end_table]
     station_merged_table = pd.concat(frames).drop_duplicates()
-
+    station_merged_table["StationName"] = station_merged_table["StationName"].str.lower()
 
     # the second step is to create the db and the db tables
 
@@ -110,26 +107,15 @@ if __name__ == '__main__':
                        STATION_NAME NVARCHAR(100) 
                        )''')
 
-        # cur.execute('''CREATE TABLE IF NOT EXISTS BIKE_DETAILS
-        #               (BIKE_ID INTEGER,
-        #                USER_TYPE NVARCHAR(100) ,
-        #                BIRTH_YEAR INTEGER,
-        #                GENDER BOOLEAN,
-        #                TRIP_DURATION_IN_MIN INTEGER ,
-        #                TRIP_ID INTEGER
-        #                )''')
-
         ##################################################################################################################################################
 
         # the third step is to load the data into the tables from the data frames
         # insert to the trip details table
-        # self.cursor.execute("SELECT weight FROM Equipment WHERE name = ?", [item]) example
 
         is_trip_details_exists = check_db_table_exists(cur, 'TRIP_DETAILS')
         is_station_details_exists = check_db_table_exists(cur, 'STATION_DETAILS')
-        # is_bike_details_exists = check_db_table_exists(cur, 'BIKE_DETAILS')
-        trip_table = change_df_cols(trip_table, ['START_STATION_ID', 'STOP_STATION_ID',
-                                                 'TRIP_DURRATION_IN_MIN', 'TRIP_DISTANCE'])
+        trip_table = change_df_cols(trip_table, ['TRIP_DURRATION_IN_MIN', 'START_STATION_ID', 'STOP_STATION_ID',
+                                                  'TRIP_DISTANCE'])
         station_merged_table = change_df_cols(station_merged_table, ['STATION_ID', 'STATION_NAME'])
 
         if is_trip_details_exists:
@@ -137,28 +123,3 @@ if __name__ == '__main__':
 
         if is_station_details_exists:
             station_merged_table.to_sql("STATION_DETAILS", con, if_exists='append', index=False)
-
-        # if is_trip_details_exists:
-        #     for row in trip_table.iterrows():
-        #         cur.execute('''
-        #                         INSERT INTO TRIP_DETAILS (START_STATION_ID, STOP_STATION_ID, TRIP_DURRATION_IN_MIN)
-        #                         VALUES( ?,	? , ? );
-        #                         ''',[int(row[1]["StartStationID"]), int(row[1]["EndStationID"]), int(row[1]["TripDurationinmin"])])
-        #
-        # if is_station_details_exists:
-        #     for row in station_merged_table.iterrows():
-        #         cur.execute('''
-        #                         INSERT INTO STATION_DETAILS (STATION_ID, STATION_NAME)
-        #                         VALUES( ?,	?);
-        #                         ''', [int(row[1]["StationID"]), row[1]["StationName"]])
-
-        # if is_bike_details_exists:
-        #     trip_id = 1
-        #     for row in bike_table.iterrows():
-        #         cur.execute('''
-        #                         INSERT INTO BIKE_DETAILS (BIKE_ID, USER_TYPE, BIRTH_YEAR,
-        #                                                 GENDER, TRIP_DURATION_IN_MIN, TRIP_ID)
-        #                         VALUES( ?,	? , ? , ?, ?, ?);
-        #                         ''', [row[1]["BikeID"], row[1]["UserType"], row[1]["BirthYear"],
-        #                               row[1]["Gender"], row[1]["TripDurationinmin"], trip_id])
-        #         trip_id += 1

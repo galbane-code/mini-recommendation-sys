@@ -61,13 +61,15 @@
             pos_hint: {"x": 0.45, "top":0.5}
             size_hint: 0.4, 0.15
 
+
         Button:
             background_color: (66/255, 135/255, 245/255,1)
             pos_hint:{"x":0.2,"y":0.05}
             size_hint: 0.6, 0.2
             font_size: (root.width**2 + root.height**2) / 13**4
-            text: "Recommend me"
+            text: "Submit"
             on_release:
                 root.recBtn()
+
 
 

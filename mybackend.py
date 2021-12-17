@@ -39,6 +39,13 @@ def check_location_in_db(location_name):
         ret_val = cur.fetchall()
         return len(ret_val) > 0
 
+def get_lat_log_for_location(location_names):
+    con = lite.connect('recommendation.db')
+    with con:
+        cur = con.cursor()
+        cur.execute('FROM ')
+        return len(ret_val) > 0
+
 def get_location_for_recommendation(start_location, time_of_trip, num_of_recommendation):
     """
     The main function of our recommendation-sys, it receives the start location
